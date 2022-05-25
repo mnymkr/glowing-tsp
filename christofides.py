@@ -3,29 +3,29 @@ from unittest import result
 
 def tsp(data):
     # build a graph
-    G = build_graph(data)
+    graph = build_graph(data)
     # print("Graph: ", G)#debug
 
     # build a minimum spanning tree
-    MSTree = minimum_spanning_tree(G)
-    # print("MSTree: ", MSTree)#debug
+    minimum_spanning_tree = minimum_spanning_tree(graph)
+    # print("Minimum Spanning Tree: ", MSTree)#debug
 
     # # find odd vertexes
-    odd_vertices = find_odd_vertices(MSTree)
+    odd_vertices = find_odd_vertices(minimum_spanning_tree)
     # print("Odd vertexes in MSTree: ", odd_vertices)
 
     # # add minimum weight matching edges to MST
-    minimum_weight_matching(MSTree, G, odd_vertices)
+    minimum_weight_matching(minimum_spanning_tree, graph, odd_vertices)
     # MSTree is now a connected multigraph
     # print("Connected multigraph: ", MSTree)
 
     # find an Eulerian tour
-    eulerian_tour = find_eulerian_tour(MSTree, G)
+    eulerian_tour = find_eulerian_tour(minimum_spanning_tree, graph)
     # print("Eulerian tour: ", eulerian_tour)
 
     # remove duplicated nodes from the path
-    current = eulerian_tour[0]
-    path = [current]
+    current_vertex = eulerian_tour[0]
+    path = [current_vertex]
 
     # keep a list of bools to see if one node is visited or not
     visited = [False] * len(eulerian_tour) 
@@ -40,18 +40,18 @@ def tsp(data):
             visited[v] = True
 
             # increment length by 1
-            length += G[current][v]
+            length += graph[current_vertex][v]
 
             # set current node to v
-            current = v
+            current_vertex = v
 
-    length += G[current][eulerian_tour[0]]
+    length += graph[current_vertex][eulerian_tour[0]]
 
     # first node is the last node since this is a tour
     path.append(eulerian_tour[0])
 
-    print("Result path: ", path)
-    print("Result length of the path: ", length)
+    print("Resulting path: ", path)
+    print("Length of the resulting path: ", length)
 
     return path
 
@@ -78,13 +78,13 @@ def build_graph(data):
             + value: distance between (x) and (y) computed by get_length()
     """
     graph = {}
-    for this in range(len(data)):
+    for this_point in range(len(data)):
         for another_point in range(len(data)):
-            if this != another_point:
-                if this not in graph:
-                    graph[this] = {}
+            if this_point != another_point:
+                if this_point not in graph:
+                    graph[this_point] = {}
 
-                graph[this][another_point] = get_length(data[this][0], data[this][1], data[another_point][0],
+                graph[this_point][another_point] = get_length(data[this_point][0], data[this_point][1], data[another_point][0],
                                                         data[another_point][1])
 
     return graph
@@ -142,13 +142,13 @@ class UnionFind:
         heaviest = y[1]
 
         # the heavier root will become the other's root
-        for r in roots:
-            if r != heaviest:
-                self.weights[heaviest] += self.weights[r]
-                self.parents[r] = heaviest
+        for root in roots:
+            if root != heaviest:
+                self.weights[heaviest] += self.weights[root]
+                self.parents[root] = heaviest
 
 
-def minimum_spanning_tree(G):
+def minimum_spanning_tree(graph):
     """
     Build a minimum spanning tree out of the supplied graph, using UnionFind 
     algorithm.
@@ -163,57 +163,56 @@ def minimum_spanning_tree(G):
     subtrees = UnionFind()
 
     # sort the edges by their increasing weights
-    sorted_graph = sorted((G[u][v], u, v) for u in G for v in G[u])
-    # print('sorted_graph: ', sorted_graph)#debug
+    sorted_graph = sorted((graph[u][v], u, v) for u in graph for v in graph[u])
 
     # go through each edge once, x and y are the vertices in that edge
-    for Weight, u, v in sorted_graph:
+    for weight, u, v in sorted_graph:
 
         # find x and y's root node
-        sub_u = subtrees[u]
-        sub_v = subtrees[v]
+        root_of_u = subtrees[u]
+        root_of_v = subtrees[v]
 
         # print("Subtree[" + str(u) + "]: " + str(sub_u))#debug
         # print("Subtree[" + str(v) + "]: " + str(sub_v))#debug
 
-        if sub_u != sub_v: # x and y do not belong to the same root node
+        if root_of_u != root_of_v: # x and y do not belong to the same root node
 
             # print("yeh not equal, unioning")#debug
 
-            tree.append((u, v, Weight)) # add the edge to the MST
+            tree.append((u, v, weight)) # add the edge to the MST
             subtrees.union(u, v) # uninize the 2 clusters into 1
 
         # print()#debug
     return tree
 
 
-def find_odd_vertices(MST):
+def find_odd_vertices(minimum_spanning_tree):
     '''
     '''
-    tmp_g = {}
+    temp_graph = {}
     odd_vertices = []
-    for edge in MST:
+    for edge in minimum_spanning_tree:
         # edge[0] is the first vertex incident to the edge
-        if edge[0] not in tmp_g: # if not present in tmp_g, add to tmp_g
-            tmp_g[edge[0]] = 0
+        if edge[0] not in temp_graph: # if not present in tmp_g, add to tmp_g
+            temp_graph[edge[0]] = 0
         # edge[1] is the second vertex incident to the edge
-        if edge[1] not in tmp_g:
-            tmp_g[edge[1]] = 0
+        if edge[1] not in temp_graph:
+            temp_graph[edge[1]] = 0
 
         # increase the degree of each vertex by 1
-        tmp_g[edge[0]] += 1
-        tmp_g[edge[1]] += 1
+        temp_graph[edge[0]] += 1
+        temp_graph[edge[1]] += 1
 
     # check if each vertex has odd degree 
-    for vertex in tmp_g:
-        if tmp_g[vertex] % 2 == 1: # if odd, add to odd_veti
+    for vertex in temp_graph:
+        if temp_graph[vertex] % 2 == 1: # if odd, add to odd_vetices
             odd_vertices.append(vertex)
 
     # print('odd vertices: ', odd_vertices)#debug
     return odd_vertices
 
 
-def minimum_weight_matching(MST, G, odd_vertices):
+def minimum_weight_matching(minimum_spanning_tree, graph, odd_vertices):
     '''
     Find a minumum weight matching in the set of odd_vertices and 
     add the newfound vertices to the existing Minimum Spanning Tree.
@@ -225,38 +224,38 @@ def minimum_weight_matching(MST, G, odd_vertices):
     while odd_vertices: # continue until there is no odd vertices left
 
         # take v out of odd_vertices
-        v = odd_vertices.pop()
+        current_vertex = odd_vertices.pop()
 
         # initial value for comparison with floating numbers
         # https://stackoverflow.com/questions/34264710/what-is-the-point-of-floatinf-in-python
         length = float("inf")
 
         u = 1
-        closest = 0
+        closest_vertex = 0
 
         # begin matching every u in odd_vertices with v
         for u in odd_vertices:
 
             # find the shortest path between v and v
-            if v != u and G[v][u] < length:
-                length = G[v][u]
-                closest = u
+            if current_vertex != u and graph[current_vertex][u] < length:
+                length = graph[current_vertex][u]
+                closest_vertex = u
 
         # after finding one, add the new edge to the Minimum Spanning Tree
         # duplicate edges do not matter
-        MST.append((v, closest, length))
+        minimum_spanning_tree.append((current_vertex, closest_vertex, length))
 
         # remove u out of odd_vertice to prevent duplication in later considerations
-        odd_vertices.remove(closest)
+        odd_vertices.remove(closest_vertex)
 
 
-def find_eulerian_tour(MatchedMSTree, G):
+def find_eulerian_tour(matched_MST, G):
 
     # FIND NEIGHBOURS
     neighbours = {}
 
     # consider each edge in MatchedMSTree
-    for edge in MatchedMSTree:
+    for edge in matched_MST:
 
         # print('MatchedMSTree: ', MatchedMSTree)#debug
         
@@ -275,48 +274,46 @@ def find_eulerian_tour(MatchedMSTree, G):
         #  - key: edge[0]
         #  - value: a list containing edge[1]
 
-    # print("Neighbours: ", neighbours)
-
     # finds the Hamiltonian circuit
-    start_vertex = MatchedMSTree[0][0] # first vertex in the first edge in MatchedMSTree
+    starting_vertex = matched_MST[0][0] # first vertex in the first edge in MatchedMSTree
     # EP = Eulerian Path
-    EP = [neighbours[start_vertex][0]] # that vertex's neighbor recorded in neighbours
+    eulerian_path = [neighbours[starting_vertex][0]] # that vertex's neighbor recorded in neighbours
 
     # print('EP: ', EP)#debug
 
     # continue until there is no edge left in MatchedMSTree
-    while len(MatchedMSTree) > 0:
+    while len(matched_MST) > 0:
         # print('EP: ', EP)#debug
-        for i, v in enumerate(EP): # 
+        for index, vertex in enumerate(eulerian_path): # 
             # x = neighbours[v]#debug
-            if len(neighbours[v]) > 0:
+            if len(neighbours[vertex]) > 0:
                 break # out of current for loop
         
         # continue when there is still unchecked neighbour 
         # in the list of neighbours of v
-        while len(neighbours[v]) > 0:
+        while len(neighbours[vertex]) > 0:
 
             # w is v's neighbour currently being considered
-            w = neighbours[v][0]
+            neighbor = neighbours[vertex][0] 
 
             # remove this edge (w, v) from the MatchedMST
-            remove_edge_from_matchedMST(MatchedMSTree, v, w)
+            remove_edge_from_matchedMST(matched_MST, vertex, neighbor)
 
             # delete w from v's list of neighbours
-            del neighbours[v][(neighbours[v].index(w))]
+            del neighbours[vertex][(neighbours[vertex].index(neighbor))]
             # delete v from w's list of neighbours
-            del neighbours[w][(neighbours[w].index(v))]
+            del neighbours[neighbor][(neighbours[neighbor].index(vertex))]
 
             # increment index of current item in EP
-            i += 1
+            index += 1
 
             # insert w as the next step in EP
-            EP.insert(i, w)
+            eulerian_path.insert(index, neighbor)
 
             # start finding the next vertex, this time from w
-            v = w
+            vertex = neighbor
 
-    return EP
+    return eulerian_path
 
 
 def remove_edge_from_matchedMST(MatchedMST, v1, v2):
@@ -327,22 +324,6 @@ def remove_edge_from_matchedMST(MatchedMST, v1, v2):
 
     return MatchedMST
 
-
-def print_google_map():
-    """This function prints out a link to Google Maps, where you can view ISS movements
-    during the time which function track_iss() was called. This function only works
-    if you have called track_iss() before."""
-    if long_lats != []:
-        print('Go here to see a Google Map of path followed by ISS: https://www.google.com/maps/dir', end='')
-        for i in range(len(long_lats)):
-            # This loop adds all coordinations to the link
-            print('/'+long_lats[i], end='')
-        print('//@'+long_lats[len(long_lats)//2]+',5z')
-        #This command sets the center of the map to the mid-point of ISS trajactory,
-        #it also sets the zoom level to 5z, enough to view the trajactory in detail.
-    else:
-        print('Please run track_iss BEFORE running this function')
-
 def get_map(result_path, mapping):
 
     # result_path is a list of indexes of items in mapping
@@ -351,8 +332,8 @@ def get_map(result_path, mapping):
     if result_path != []:
         url += 'https://www.google.com/maps/dir/?api=1'
 
-        result_path.pop()
-        destination = result_path.pop(-1)
+        # result_path.pop()
+        destination = result_path.pop()
 
         origin = result_path.pop(0)
         url += '&origin=' + str(mapping[origin][0]) + ',' + str(mapping[origin][1])
@@ -407,12 +388,15 @@ def main():
 
     print("Here's your Google Maps link: " , url)
 
+    destinations = [
+        [10.725906204249258, 106.72433446825471], # Waterfront
+        [10.7270230306425, 106.72027991899324], #Fulbright
+        [10.735723087013758, 106.72688522969952] # Docklands
+    ]
+
 
 main()
         
-
-
-# what is this
 # tsp([
 #     [0, 0],
 #     [3, 0],
