@@ -1,46 +1,59 @@
+from unittest import result
+
+
 def tsp(data):
     # build a graph
     G = build_graph(data)
-    print("Graph: ", G)
+    # print("Graph: ", G)#debug
 
     # build a minimum spanning tree
     MSTree = minimum_spanning_tree(G)
-    print("MSTree: ", MSTree)
+    # print("MSTree: ", MSTree)#debug
 
     # # find odd vertexes
     odd_vertices = find_odd_vertices(MSTree)
-    print("Odd vertexes in MSTree: ", odd_vertices)
+    # print("Odd vertexes in MSTree: ", odd_vertices)
 
     # # add minimum weight matching edges to MST
     minimum_weight_matching(MSTree, G, odd_vertices)
-    print("Minimum weight matching: ", MSTree)
+    # MSTree is now a connected multigraph
+    # print("Connected multigraph: ", MSTree)
 
-    # MSTree is now MatchedMSTree
-    # # find an eulerian tour
+    # find an Eulerian tour
     eulerian_tour = find_eulerian_tour(MSTree, G)
-    print("Eulerian tour: ", eulerian_tour)
+    # print("Eulerian tour: ", eulerian_tour)
 
-    # current = eulerian_tour[0]
-    # path = [current]
-    # visited = [False] * len(eulerian_tour)
-    # visited[eulerian_tour[0]] = True
-    # length = 0
+    # remove duplicated nodes from the path
+    current = eulerian_tour[0]
+    path = [current]
 
-    # for v in eulerian_tour:
-    #     if not visited[v]:
-    #         path.append(v)
-    #         visited[v] = True
+    # keep a list of bools to see if one node is visited or not
+    visited = [False] * len(eulerian_tour) 
+    visited[eulerian_tour[0]] = True
+    length = 0
 
-    #         length += G[current][v]
-    #         current = v
+    for v in eulerian_tour:
 
-    # length +=G[current][eulerian_tour[0]]
-    # path.append(eulerian_tour[0])
+        # if v is not visited, addpend v to the path
+        if not visited[v]:
+            path.append(v)
+            visited[v] = True
 
-    # print("Result path: ", path)
-    # print("Result length of the path: ", length)
+            # increment length by 1
+            length += G[current][v]
 
-    # return length, path
+            # set current node to v
+            current = v
+
+    length += G[current][eulerian_tour[0]]
+
+    # first node is the last node since this is a tour
+    path.append(eulerian_tour[0])
+
+    print("Result path: ", path)
+    print("Result length of the path: ", length)
+
+    return path
 
 
 def get_length(x1, y1, x2, y2):
@@ -196,7 +209,7 @@ def find_odd_vertices(MST):
         if tmp_g[vertex] % 2 == 1: # if odd, add to odd_veti
             odd_vertices.append(vertex)
 
-    print('odd vertices: ', odd_vertices)#debug
+    # print('odd vertices: ', odd_vertices)#debug
     return odd_vertices
 
 
@@ -239,17 +252,19 @@ def minimum_weight_matching(MST, G, odd_vertices):
 
 def find_eulerian_tour(MatchedMSTree, G):
 
-    # find neigbours
+    # FIND NEIGHBOURS
     neighbours = {}
 
     # consider each edge in MatchedMSTree
     for edge in MatchedMSTree:
+
+        # print('MatchedMSTree: ', MatchedMSTree)#debug
         
         # edge[0] is the first vertex incident to the edge
         if edge[0] not in neighbours: # if not present in neighbors, add to neighbours
             neighbours[edge[0]] = []
 
-        # edge[1] is the second vertex indident to the edge
+        # edge[1] is the second vertex incident to the edge
         if edge[1] not in neighbours:
             neighbours[edge[1]] = []
 
@@ -262,27 +277,43 @@ def find_eulerian_tour(MatchedMSTree, G):
 
     # print("Neighbours: ", neighbours)
 
-    # finds the hamiltonian circuit
+    # finds the Hamiltonian circuit
     start_vertex = MatchedMSTree[0][0] # first vertex in the first edge in MatchedMSTree
-    EP = [neighbours[start_vertex][0]] # 
+    # EP = Eulerian Path
+    EP = [neighbours[start_vertex][0]] # that vertex's neighbor recorded in neighbours
+
+    # print('EP: ', EP)#debug
 
     # continue until there is no edge left in MatchedMSTree
     while len(MatchedMSTree) > 0:
-        for i, v in enumerate(EP):
+        # print('EP: ', EP)#debug
+        for i, v in enumerate(EP): # 
+            # x = neighbours[v]#debug
             if len(neighbours[v]) > 0:
-                break
-
+                break # out of current for loop
+        
+        # continue when there is still unchecked neighbour 
+        # in the list of neighbours of v
         while len(neighbours[v]) > 0:
+
+            # w is v's neighbour currently being considered
             w = neighbours[v][0]
 
+            # remove this edge (w, v) from the MatchedMST
             remove_edge_from_matchedMST(MatchedMSTree, v, w)
 
+            # delete w from v's list of neighbours
             del neighbours[v][(neighbours[v].index(w))]
+            # delete v from w's list of neighbours
             del neighbours[w][(neighbours[w].index(v))]
 
+            # increment index of current item in EP
             i += 1
+
+            # insert w as the next step in EP
             EP.insert(i, w)
 
+            # start finding the next vertex, this time from w
             v = w
 
     return EP
@@ -310,40 +341,89 @@ def print_google_map():
         #This command sets the center of the map to the mid-point of ISS trajactory,
         #it also sets the zoom level to 5z, enough to view the trajactory in detail.
     else:
-        print('Please run track_iss BEFORE running this function')7
+        print('Please run track_iss BEFORE running this function')
+
+def get_map(result_path, mapping):
+
+    # result_path is a list of indexes of items in mapping
+    # mapping is a list of lists, [[lat1, lon1], [lat2, lon2]]
+    url = ''
+    if result_path != []:
+        url += 'https://www.google.com/maps/dir/?api=1'
+
+        result_path.pop()
+        destination = result_path.pop(-1)
+
+        origin = result_path.pop(0)
+        url += '&origin=' + str(mapping[origin][0]) + ',' + str(mapping[origin][1])
+
+        url += '&mapaction=map'
+
+        url += '&waypoints='
+
+        for node in result_path:
+            url += str(mapping[node][0]) + ',' + str(mapping[node][1]) + '|'
+
+        url = url[:-1]
+
+        url += '&destination=' + str(mapping[destination][0]) + ',' + str(mapping[destination][1])
+    
+    return url
 
 # each entry in tsp is [x, y]
 # no need to store the length of edges because the graph is connected. Length will be computed later.
 # after having the Eulerian tour, map each node's index to the place's name to make it cooler.
 
-# tsp([[1380, 939], [2848, 96], [3510, 1671], [457, 334], [3888, 666], [984, 965], [2721, 1482], [1286, 525],
-#              [2716, 1432], [738, 1325], [1251, 1832], [2728, 1698], [3815, 169], [3683, 1533], [1247, 1945], [123, 862],
-#              [1234, 1946], [252, 1240], [611, 673], [2576, 1676], [928, 1700], [53, 857], [1807, 1711], [274, 1420],
-#              [2574, 946], [178, 24], [2678, 1825], [1795, 962], [3384, 1498], [3520, 1079], [1256, 61], [1424, 1728],
-#              [3913, 192], [3085, 1528], [2573, 1969], [463, 1670], [3875, 598], [298, 1513], [3479, 821], [2542, 236],
-#              [3955, 1743], [1323, 280], [3447, 1830], [2936, 337], [1621, 1830], [3373, 1646], [1393, 1368],
-#              [3874, 1318], [938, 955], [3022, 474], [2482, 1183], [3854, 923], [376, 825], [2519, 135], [2945, 1622],
-#              [953, 268], [2628, 1479], [2097, 981], [890, 1846], [2139, 1806], [2421, 1007], [2290, 1810], [1115, 1052],
-#              [2588, 302], [327, 265], [241, 341], [1917, 687], [2991, 792], [2573, 599], [19, 674], [3911, 1673],
-#              [872, 1559], [2863, 558], [929, 1766], [839, 620], [3893, 102], [2178, 1619], [3822, 899], [378, 1048],
-#              [1178, 100], [2599, 901], [3416, 143], [2961, 1605], [611, 1384], [3113, 885], [2597, 1830], [2586, 1286],
-#              [161, 906], [1429, 134], [742, 1025], [1625, 1651], [1187, 706], [1787, 1009], [22, 987], [3640, 43],
-#              [3756, 882], [776, 392], [1724, 1642], [198, 1810], [3950, 1558]])
+# tsp([[1, 1], [2, 5], [8, 0]])
 
-tsp([[1, 1], [2, 5], [8, 0]])
 
-#
+def get_input(coordinates):
+
+    user_input = ''
+    
+    while user_input != 'done':
+
+        user_input = input("Enter lattitude and longitude, formatted as: lat,long. \nEnter 'done' when finished: ")
+
+        if user_input == 'done':
+            break
+
+        raw_list = user_input.split(',')
+        coordinates.append([float(raw_list[0]), float(raw_list[1])])
+
+def main():
+    coordinates = []
+    get_input(coordinates)
+
+    if coordinates == []:
+        print('No stop given, exiting...')
+        exit()
+
+    # print('coordinates: ', coordinates)
+
+    result_path = tsp(coordinates)
+
+    url = get_map(result_path, coordinates)
+
+    print("Here's your Google Maps link: " , url)
+
+
+main()
+        
+
+
+# what is this
 # tsp([
 #     [0, 0],
 #     [3, 0],
 #     [6, 0],
-#
+
 #     [0, 3],
 #     [3, 3],
 #     [6, 3],
-#
+
 #     [0, 6],
 #     [3, 6],
 #     [6, 6],
-#
+
 # ])
