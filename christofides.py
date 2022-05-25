@@ -256,12 +256,15 @@ def find_eulerian_tour(MatchedMSTree, G):
         # add each vertex in the edge as each other's neighbour
         neighbours[edge[0]].append(edge[1])
         neighbours[edge[1]].append(edge[0])
+        # now neighbor looks like a dictionary: neighbors{edge[0]:[edge[1]]}
+        #  - key: edge[0]
+        #  - value: a list containing edge[1]
 
     # print("Neighbours: ", neighbours)
 
     # finds the hamiltonian circuit
-    start_vertex = MatchedMSTree[0][0]
-    EP = [neighbours[start_vertex][0]]
+    start_vertex = MatchedMSTree[0][0] # first vertex in the first edge in MatchedMSTree
+    EP = [neighbours[start_vertex][0]] # 
 
     # continue until there is no edge left in MatchedMSTree
     while len(MatchedMSTree) > 0:
@@ -292,6 +295,22 @@ def remove_edge_from_matchedMST(MatchedMST, v1, v2):
             del MatchedMST[i]
 
     return MatchedMST
+
+
+def print_google_map():
+    """This function prints out a link to Google Maps, where you can view ISS movements
+    during the time which function track_iss() was called. This function only works
+    if you have called track_iss() before."""
+    if long_lats != []:
+        print('Go here to see a Google Map of path followed by ISS: https://www.google.com/maps/dir', end='')
+        for i in range(len(long_lats)):
+            # This loop adds all coordinations to the link
+            print('/'+long_lats[i], end='')
+        print('//@'+long_lats[len(long_lats)//2]+',5z')
+        #This command sets the center of the map to the mid-point of ISS trajactory,
+        #it also sets the zoom level to 5z, enough to view the trajactory in detail.
+    else:
+        print('Please run track_iss BEFORE running this function')7
 
 # each entry in tsp is [x, y]
 # no need to store the length of edges because the graph is connected. Length will be computed later.
