@@ -2,25 +2,43 @@ from unittest import result
 
 
 def hamiltonian_path(data):
+    '''
+    Main function for finding a Hamiltonian path in the supplied set of vertices.
+    What is assumed:
+        -  The graph is connected.
+        -  The graph satisfies the Triangle Inequality.
+
+    Steps to cover to produce a Hamiltonian path:
+        1. Build a graph that contains all vertices from the data provided.
+        2. Find a minimum spanning tree from the graph, which is a list of edges.
+        4. Find all odd vertices in the minimum spanning tree, this is a list of vertices' index in the graph.
+        5. Form a minimum perfect matching of all the odd vertices, which, in essence, is a list of edges.
+        6. Combine the minimum spanning tree with the new minimum perfect matching to form a new
+        connected multigraph, in which every vertex has even degree.
+        7. Find an Eulerian tour in this new multigraph, which is a list of edges in traversal order.
+        8. Finally, remove duplicate vertices from the Eulerian tour, and we'll have a Hamiltonian tour.
+    '''
     # build a graph
     graph = make_graph(data)
     # print("Graph: ", G)#debug
 
     # build a minimum spanning tree
-    minimum_spanning_tree = minimum_spanning_tree(graph)
-    # print("Minimum Spanning Tree: ", MSTree)#debug
+    minimum_spanning_tree = make_mst(graph)
+    # print("Minimum Spanning Tree: ", minimum_spanning_tree)#debug
 
     # # find odd vertexes
     odd_vertices = find_odd_vertices(minimum_spanning_tree)
-    # print("Odd vertexes in MSTree: ", odd_vertices)
+    # print("Odd vertexes in MSTree: ", odd_vertices)#debug
 
     # # add minimum weight matching edges to MST
-    min_weight_matching(minimum_spanning_tree, graph, odd_vertices)
+    connected_multigraph = min_weight_matching(minimum_spanning_tree, graph, odd_vertices)
     # MSTree is now a connected multigraph
-    # print("Connected multigraph: ", MSTree)
+    # print("Connected multigraph: ", minimum_spanning_tree)
+
+    # connected_multigraph = minimum_spanning_tree
 
     # find an Eulerian tour
-    eulerian_tour = find_eulerian_tour(minimum_spanning_tree, graph)
+    eulerian_tour = find_eulerian_tour(connected_multigraph, graph)
     # print("Eulerian tour: ", eulerian_tour)
 
     # remove duplicated nodes from the path
@@ -50,8 +68,9 @@ def hamiltonian_path(data):
     # first node is the last node since this is a tour
     path.append(eulerian_tour[0])
 
-    print("Resulting path: ", path)
-    print("Length of the resulting path: ", length)
+    # print("Resulting path: ", path)
+    # print("Length of the resulting path: ", length)
+
 
     return path
 
@@ -70,7 +89,7 @@ def compute_length(x1, y1, x2, y2):
 
 def make_graph(data):
     """
-    continually build a graph out of the supplied data.
+    Continually build a graph out of the supplied data.
     The resulting graph is a dictionary
         - key: a node's index in the data list (x)
         - value: a dictionary
@@ -92,18 +111,17 @@ def make_graph(data):
 
 class UnionFind:
     """
-    Class of object used to store information about clusters and weight of each clusters"""
+    Class of object used to store information about clusters and weight of each clusters.
+    """
     def __init__(self):
         self.weights = {}
         self.parents = {}
 
     def __getitem__(self, object):
         '''
-        get the parent of the supplied object
-        
+        Get the parent of the supplied object
         if the parent is not yet initialized, the object is its own parent
-        
-        else, return the parent of the object'''
+        otherwise, return the parent of the object'''
         # print("inside getitem") #debug
         if object not in self.parents:
             self.parents[object] = object
@@ -154,9 +172,9 @@ def make_mst(graph):
     algorithm.
 
     param: 
-        G the dictionary containing the graph
+        G - the dictionary containing the graph
     return:
-        tree the minimum spanning tree produced from the graph
+        tree - the minimum spanning tree produced from the graph
     """
 
     tree = []
@@ -188,8 +206,11 @@ def make_mst(graph):
 
 def find_odd_vertices(minimum_spanning_tree):
     '''
+    Returns a list of odd-weighted vertices in the minimum_spanning_tree.
+    Build a temporary graph out of the minimum_spanning_tree for easy counting of 
+    each vertex's degree.
     '''
-    temp_graph = {}
+    temp_graph = {} # used to store the degree of the vertices
     odd_vertices = []
     for edge in minimum_spanning_tree:
         # edge[0] is the first vertex incident to the edge
@@ -214,8 +235,12 @@ def find_odd_vertices(minimum_spanning_tree):
 
 def min_weight_matching(minimum_spanning_tree, graph, odd_vertices):
     '''
-    Find a minumum weight matching in the set of odd_vertices and 
-    add the newfound vertices to the existing Minimum Spanning Tree.
+    Find a minimum weight matching in the set of odd_vertices 
+    and then add the newfound vertices to the existing Minimum Spanning Tree.
+
+    This step is supposed to be done in 2, but is instead combined since 
+    new edges in the matching can be added immediately to the MST without
+    any further contemplation.
     '''
 
     import random
@@ -249,14 +274,28 @@ def min_weight_matching(minimum_spanning_tree, graph, odd_vertices):
         # remove u out of odd_vertices to prevent duplication in later considerations
         odd_vertices.remove(closest_vertex)
 
+    return minimum_spanning_tree
 
-def find_eulerian_tour(multigraph, G):
 
-    # FIND NEIGHBOURS
+def find_eulerian_tour(connected_multigraph, G):
+    '''
+    Find an Elerian tour in the Multigraph: 
+    1. Start with a vertex v
+    2. Form a cycle with v.
+    3. If there are any vertex (v) in that Cycle that still has edges not in that cycle yet, then:
+        create a new cycle from v using unused edges,
+        add that new cycle to the previous cycle, forming a larger cycle.
+    4. The result will be an Eulerian cycle in the connected_graph.
+
+    Loops of multiedges will be avoided because edges created from the perfect
+    matching will only be considered after all old, 'proper' edges have been exhausted.
+    '''
+
+    # FIND NEIGHBOURS of all vertices
     neighbours = {}
 
     # consider each edge in MatchedMSTree
-    for edge in multigraph:
+    for edge in connected_multigraph:
 
         # print('MatchedMSTree: ', MatchedMSTree)#debug
         
@@ -276,19 +315,25 @@ def find_eulerian_tour(multigraph, G):
         #  - value: a list containing edge[1]
 
     # finds the Hamiltonian circuit
-    starting_vertex = multigraph[0][0] # first vertex in the first edge in MatchedMSTree
-    # EP = Eulerian Path
+    starting_vertex = connected_multigraph[0][0] # first vertex in the first edge in connected_multigraph
+
     eulerian_path = [neighbours[starting_vertex][0]] # that vertex's neighbor recorded in neighbours
 
-    # print('EP: ', EP)#debug
+    # print('Current path: ', eulerian_path)#debug
 
-    # continue until there is no edge left in MatchedMSTree
-    while len(multigraph) > 0:
-        # print('EP: ', EP)#debug
-        for index, vertex in enumerate(eulerian_path): # 
-            # x = neighbours[v]#debug
-            if len(neighbours[vertex]) > 0:
-                break # out of current for loop
+    # continue until there is no edge left in connected_multigraph
+    while len(connected_multigraph) > 0:
+
+        # print('Neighbor: ', neighbours)#debug
+
+
+        for index, vertex in enumerate(eulerian_path): 
+
+            # if this vertext still has some neightbors left, then 
+            # break out of the for loop with its index and vertex
+            if len(neighbours[vertex]) > 0: 
+                # print(str(vertex) + ' still has neighbours')#debug
+                break
         
         # continue when there is still unchecked neighbour 
         # in the list of neighbours of v
@@ -297,8 +342,8 @@ def find_eulerian_tour(multigraph, G):
             # w is v's neighbour currently being considered
             neighbor = neighbours[vertex][0] 
 
-            # remove this edge (w, v) from the MatchedMST
-            remove_edge(multigraph, vertex, neighbor)
+            # remove this edge (w, v) from the connected_multigraph
+            remove_edge(connected_multigraph, vertex, neighbor)
 
             # delete w from v's list of neighbours
             del neighbours[vertex][(neighbours[vertex].index(neighbor))]
@@ -308,32 +353,48 @@ def find_eulerian_tour(multigraph, G):
             # increment index of current item in EP
             index += 1
 
-            # insert w as the next step in EP
+            # insert w as the next step in the Eulerian Path
             eulerian_path.insert(index, neighbor)
+
+            # print('Neigbor in small while: ', neighbours)#debug
+            # print('Current path: ', eulerian_path)
 
             # start finding the next vertex, this time from w
             vertex = neighbor
 
+
+
+
+
     return eulerian_path
 
 
-def remove_edge(MatchedMST, v1, v2):
+def remove_edge(connected_multigraph, v1, v2):
 
-    for i, item in enumerate(MatchedMST):
+    '''
+    Remove an edge (v1, v2) from the supplied connected_multigraph
+    '''
+
+    for i, item in enumerate(connected_multigraph):
         if (item[0] == v2 and item[1] == v1) or (item[0] == v1 and item[1] == v2):
-            del MatchedMST[i]
+            del connected_multigraph[i]
 
-    return MatchedMST
+    return connected_multigraph
 
 def get_map_url(result_path, mapping):
 
-    # result_path is a list of indexes of items in mapping
-    # mapping is a list of lists, [[lat1, lon1], [lat2, lon2]]
+    '''
+    Return a useful Google Map url which list all desired destinations in the order 
+    of the Hamiltonian path of them.
+
+    result_path is a list of indexes of items in mapping
+    mapping is a list of lists, [[lat1, lon1], [lat2, lon2]]
+    '''
+
     url = ''
     if result_path != []:
         url += 'https://www.google.com/maps/dir/?api=1'
 
-        # result_path.pop()
         destination = result_path.pop()
 
         origin = result_path.pop(0)
@@ -351,10 +412,6 @@ def get_map_url(result_path, mapping):
         url += '&destination=' + str(mapping[destination][0]) + ',' + str(mapping[destination][1])
     
     return url
-
-# each entry in tsp is [x, y]
-# no need to store the length of edges because the graph is connected. Length will be computed later.
-# after having the Eulerian tour, map each node's index to the place's name to make it cooler.
 
 
 def get_input(coordinates):
@@ -376,10 +433,8 @@ def main():
     get_input(coordinates)
 
     if coordinates == []:
-        print('No stop given, exiting...')
+        print("Here's your link: https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         exit()
-
-    # print('coordinates: ', coordinates)
 
     result_path = hamiltonian_path(coordinates)
 
@@ -393,22 +448,6 @@ def main():
     #     [10.735723087013758, 106.72688522969952] # Docklands
     # ]
 
-
 main()
-        
-# tsp([
-#     [0, 0],
-#     [3, 0],
-#     [6, 0],
 
-#     [0, 3],
-#     [3, 3],
-#     [6, 3],
-
-#     [0, 6],
-#     [3, 6],
-#     [6, 6],
-
-# ])
-
-# tsp([[1, 1], [2, 5], [8, 0]])
+# demo_graph = [[1, 1], [2, 5], [8, 0]]
